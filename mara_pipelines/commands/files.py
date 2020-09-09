@@ -176,6 +176,38 @@ class ReadS3File(_ReadFile):
                 ] + super().html_doc_items()
 
 
+class ReadGCSFile(_ReadFile):
+    """Reads data from a file on Google Cloud Storage"""
+
+    def __init__(self, gcs_uri: str, compression: Compression, target_table: str,
+                 mapper_script_file_name: str = None, make_unique: bool = False,
+                 db_alias: str = None, csv_format: bool = False, skip_header: bool = False,
+                 delimiter_char: str = None, quote_char: str = None,
+                 null_value_string: str = None, timezone: str = None
+                 ) -> None:
+        super().__init__(compression=compression,
+                         target_table=target_table,
+                         mapper_script_file_name=mapper_script_file_name,
+                         make_unique=make_unique,
+                         db_alias=db_alias,
+                         csv_format=csv_format,
+                         skip_header=skip_header,
+                         delimiter_char=delimiter_char,
+                         quote_char=quote_char,
+                         null_value_string=null_value_string,
+                         timezone=timezone)
+        self.gcs_uri = gcs_uri
+
+    def read_file_command(self):
+        return (f"gsutil cat '{self.gcs_uri}' \\\n"
+                + f'  | {uncompressor(self.compression)} - ')
+
+    def html_doc_items(self) -> [(str, str)]:
+        return [('GCS uri', _.i[self.gcs_uri])
+                ] + super().html_doc_items()
+    pass
+
+
 class ReadSQLite(sql._SQLCommand):
     def __init__(self, sqlite_file_name: str, target_table: str,
                  sql_statement: str = None, sql_file_name: str = None, replace: {str: str} = None,
