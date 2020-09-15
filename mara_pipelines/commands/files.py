@@ -114,15 +114,14 @@ class ReadFile(_ReadFile):
                          timezone=timezone)
         self.file_name = file_name
 
-    def read_file_command(self):
-        file_path = pathlib.Path(config.data_dir()) / self.file_name
+    def shell_command(self):
         db = mara_db.dbs.db(self.db_alias())
         if isinstance(db, mara_db.dbs.SQLServerDB):
             if self.compression != Compression.NONE:
                 raise ValueError('A compression for ReadFile is not supported when the db_alias referres to a SQL Server (SQLServerDB)')
             if self.csv_format == False:
                 raise ValueError('The parameter csv_format must be true or none when the db_alias referres to a SQL Server (SQLServerDB)')
-            return (f'bcp {self.target_table} in {file_path}'
+            return (f'bcp {self.target_table} in {pathlib.Path(config.data_dir()) / self.file_name}'
                     + (f' -U {db.user}' if db.user else '')
                     + (f' -P {db.password}' if db.password else '')
                     + (f' -S {db.host}' if db.host else '')
@@ -140,7 +139,10 @@ class ReadFile(_ReadFile):
             # Bigquery loading does not support streaming data through pipes
             return copy_from_stdin_command + f" {pathlib.Path(config.data_dir()) / self.file_name}"
         else:
-            return f'{uncompressor(self.compression)} "{pathlib.Path(config.data_dir()) / self.file_name}"'
+            super().shell_command()
+
+    def read_file_command(self):
+        return f'{uncompressor(self.compression)} "{pathlib.Path(config.data_dir()) / self.file_name}"'
 
     def html_doc_items(self) -> [(str, str)]:
         return [('file name', _.i[self.file_name])] + super().html_doc_items()
