@@ -129,7 +129,7 @@ class ReadFile(_ReadFile):
                     + ' -c'
                     + (f' -t {self.delimiter_char}' if self.delimiter_char else ' -t \',\'')
                     + (' -F2' if self.skip_header else ''))
-        elif isinstance(db, mara_db.dbs.BigQueryDB):
+        elif isinstance(db, mara_db.dbs.BigQueryDB) and not db.gcloud_gcs_bucket_name:
             copy_from_stdin_command = mara_db.shell.copy_from_stdin_command(
                 self.db_alias(), csv_format=self.csv_format, target_table=self.target_table,
                 skip_header=self.skip_header,
