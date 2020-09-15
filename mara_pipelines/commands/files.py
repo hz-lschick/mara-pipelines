@@ -139,7 +139,7 @@ class ReadFile(_ReadFile):
             # Bigquery loading does not support streaming data through pipes
             return copy_from_stdin_command + f" {pathlib.Path(config.data_dir()) / self.file_name}"
         else:
-            super().shell_command()
+            return super().shell_command()
 
     def read_file_command(self):
         return f'{uncompressor(self.compression)} "{pathlib.Path(config.data_dir()) / self.file_name}"'
