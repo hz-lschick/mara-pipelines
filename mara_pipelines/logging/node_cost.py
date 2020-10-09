@@ -8,7 +8,7 @@ import mara_db.postgresql
 from .. import pipelines
 
 
-def node_durations_and_run_times(node: pipelines.Node) -> {tuple: [float, float]}:
+def node_durations_and_run_times(node: pipelines.Node, label_filter: str = None) -> {tuple: [float, float]}:
     """
     Returns for children of `node` the average duration and run time (sum of average duration of all leaf nodes)
 
@@ -33,17 +33,18 @@ WITH child_nodes AS
         WHERE node.node_path [ 0 : {'%(level)s'}] = %(path)s
           AND array_length(node.node_path, 1) > {'%(level)s'}
           AND succeeded = TRUE
+          AND (is_pipeline = 'f' or Coalesce(label_filter,'') = %(label_filter)s)
         GROUP BY node.node_path)
 SELECT node_path,
        round(avg(avg_duration)::NUMERIC, 1) AS avg_duration,
        round(sum(avg_run_time)::NUMERIC, 1) AS avg_run_time
 FROM child_nodes
-GROUP BY node_path;""", {'path': node.path(), 'level': len(node.path())})
+GROUP BY node_path;""", {'path': node.path(), 'level': len(node.path()), 'label_filter': label_filter if label_filter else ''})
 
         return {tuple(row[0]): row[1:] for row in cursor.fetchall()}
 
 
-def compute_cost(node: pipelines.Node, node_durations_and_run_times: {tuple: [float, float]}) -> float:
+def compute_cost(node: pipelines.Node, node_durations_and_run_times: {tuple: [float, float]}, label_filter: str = None) -> float:
     """
     Computes the cost of a node as maximum cumulative run time of a node and all its downstreams.
     Stores the result in `node` and also returns it
@@ -56,7 +57,7 @@ def compute_cost(node: pipelines.Node, node_durations_and_run_times: {tuple: [fl
     path = tuple(node.path())
     if node.cost is None:
         node.cost = (
-                max([compute_cost(downstream, node_durations_and_run_times)
+                max([compute_cost(downstream, node_durations_and_run_times, label_filter)
                      for downstream in node.downstreams] or [0])
                 + (node_durations_and_run_times.get(path, [0, 0])[1] or 0))
 

@@ -22,6 +22,7 @@ class Run(Base):
     start_time = sqlalchemy.Column(sqlalchemy.TIMESTAMP(timezone=True), nullable=False)
     end_time = sqlalchemy.Column(sqlalchemy.TIMESTAMP(timezone=True))
     succeeded = sqlalchemy.Column(sqlalchemy.BOOLEAN)
+    label_filter = sqlalchemy.Column(sqlalchemy.TEXT)
 
 
 class NodeRun(Base):
@@ -36,6 +37,7 @@ class NodeRun(Base):
     end_time = sqlalchemy.Column(sqlalchemy.TIMESTAMP(timezone=True))
     succeeded = sqlalchemy.Column(sqlalchemy.BOOLEAN)
     is_pipeline = sqlalchemy.Column(sqlalchemy.BOOLEAN)
+    label_filter = sqlalchemy.Column(sqlalchemy.TEXT)
 
 
 class NodeOutput(Base):
@@ -107,9 +109,9 @@ class RunLogger(events.EventHandler):
         if isinstance(event, pipeline_events.RunStarted):
             with mara_db.postgresql.postgres_cursor_context('mara') as cursor:  # type: psycopg2.extensions.cursor
                 cursor.execute(f'''
-INSERT INTO data_integration_run (node_path, pid, start_time)
-VALUES ({"%s, %s, %s"})
-RETURNING run_id;''', (event.node_path, event.pid, event.start_time))
+INSERT INTO data_integration_run (node_path, pid, start_time, label_filter)
+VALUES ({"%s, %s, %s, %s"})
+RETURNING run_id;''', (event.node_path, event.pid, event.start_time, event.label_filter))
                 self.run_id = cursor.fetchone()[0]
 
         elif isinstance(event, pipeline_events.Output):
@@ -126,9 +128,9 @@ RETURNING run_id;''', (event.node_path, event.pid, event.start_time))
         elif isinstance(event, pipeline_events.NodeStarted):
             with mara_db.postgresql.postgres_cursor_context('mara') as cursor:  # type: psycopg2.extensions.cursor
                 cursor.execute(f'''
-INSERT INTO data_integration_node_run (run_id, node_path, start_time, is_pipeline)
-VALUES  ({"%s, %s, %s, %s"})
-RETURNING node_run_id''', (self.run_id, event.node_path, event.start_time, event.is_pipeline))
+INSERT INTO data_integration_node_run (run_id, node_path, start_time, is_pipeline, label_filter)
+VALUES  ({"%s, %s, %s, %s, %s"})
+RETURNING node_run_id''', (self.run_id, event.node_path, event.start_time, event.is_pipeline, event.label_filter))
 
         elif isinstance(event, system_statistics.SystemStatistics):
             try:
