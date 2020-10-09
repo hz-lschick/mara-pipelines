@@ -55,7 +55,8 @@ SELECT
   run_id,
   to_char(start_time, 'Mon DD HH24:MI') AS start_time,
   extract(EPOCH FROM (end_time - start_time)) AS duration,
-  succeeded
+  succeeded,
+  label_filter
 FROM data_integration_node_run
 WHERE node_path = {"%s"}
 ORDER BY run_id DESC;''', (node.path(),))
@@ -67,8 +68,9 @@ ORDER BY run_id DESC;''', (node.path(),))
                      start_time, ' (',
                      f'{node_cost.format_duration(duration)}, {"succeeded" if succeeded else "failed"}'
                      if succeeded is not None else 'unfinished',
+                     (f', label-filter: {label_filter}' if label_filter else ''),
                      ')']
-                 for run_id, start_time, duration, succeeded in cursor.fetchall()]])
+                 for run_id, start_time, duration, succeeded, label_filter in cursor.fetchall()]])
 
 
 @views.blueprint.route('/<path:path>/run-output', defaults={'run_id': None, 'limit': False})

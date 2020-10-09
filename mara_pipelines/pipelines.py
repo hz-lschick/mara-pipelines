@@ -81,8 +81,8 @@ class Command():
 
 
 class Task(Node):
-    def __init__(self, id: str, description: str, commands: [Command] = None, max_retries: int = None) -> None:
-        super().__init__(id, description)
+    def __init__(self, id: str, description: str, commands: [Command] = None, max_retries: int = None, labels: {str, str} = None) -> None:
+        super().__init__(id, description, labels)
         self.commands = []
         self.max_retries = max_retries
 
@@ -109,8 +109,8 @@ class Task(Node):
 
 class ParallelTask(Node):
     def __init__(self, id: str, description: str, max_number_of_parallel_tasks: int = None,
-                 commands_before: [Command] = None, commands_after: [Command] = None) -> None:
-        super().__init__(id, description)
+                 commands_before: [Command] = None, commands_after: [Command] = None, labels: {str, str} = None) -> None:
+        super().__init__(id, description, labels)
         self.commands_before = []
         for command in commands_before or []:
             self.add_command_before(command)
@@ -304,6 +304,76 @@ def find_node(path: [str]) -> (Node, bool):
                 return node, False
 
     return _find_node(config.root_pipeline(), path)
+
+
+def label_filter_applies_to_node(node: Node, label_filter: str) -> bool:
+    """
+    Checks if a label filter applies to a node.
+
+    Samples of the label filter:
+        label_name          - this will check if the label is present
+        !label_name         - this will check if a label is not present
+        label_name==value   - this will check if a label is present and has a specific value
+        label_name!=value   - this will check if a label is not present or has not a specific value
+
+    Allowed logical operators:
+        and     - a logical and operation
+        or      - a logical or operation
+
+    Args:
+        label_filter: the label filter string
+    
+    Returns:
+        True if filter applies, otherwise False
+    """
+    if not label_filter:
+        return True
+
+    if label_filter.find('(') >= 0 or label_filter.find(')') >= 0:
+        raise Exception('Breakets in labels_filter are not yet supported')
+
+    if label_filter.find('"') >= 0 or label_filter.find('\'') >= 0:
+        raise Exception('Quoting in labels_filter are not yet supported')
+
+    prev_logical_or_result = None
+    for or_filter in label_filter.split(' or '):
+        prev_logical_and_result = None
+        for and_filter in or_filter.split(' and '):
+            filter = and_filter
+            filter_logical_result = None
+            field_left = None
+            field_right = None
+            if filter.find('==') >= 0:
+                field_left = filter[:filter.find('==')].strip()
+                field_right = filter[filter.find('==')+2:].strip()
+                if field_left not in node.labels:
+                    filter_logical_result = False
+                else:
+                    filter_logical_result = node.labels[field_left] == field_right
+            elif filter.find('!=') > 0:
+                field_left = filter[:filter.find('!=')].strip()
+                field_right = filter[filter.find('!=')+2:].strip()
+                if field_left not in node.labels:
+                    filter_logical_result = True
+                else:
+                    filter_logical_result = node.labels[field_left] != field_right
+            elif filter.strip()[0] == '!':
+                field_left = filter[1:].strip()
+                filter_logical_result = field_left not in node.labels
+            else:
+                field_left = filter.strip()
+                filter_logical_result = field_left in node.labels
+
+            if prev_logical_and_result == None:
+                prev_logical_and_result = filter_logical_result
+            else:
+                prev_logical_and_result = prev_logical_and_result and filter_logical_result
+        if prev_logical_or_result == None:
+            prev_logical_or_result = prev_logical_and_result
+        else:
+            prev_logical_or_result = prev_logical_or_result and prev_logical_and_result
+
+    return prev_logical_or_result
 
 
 def demo_pipeline():

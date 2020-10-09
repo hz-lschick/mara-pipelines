@@ -28,7 +28,8 @@ class RunStarted(PipelineEvent):
                  pid: int,
                  is_root_pipeline: bool = False,
                  node_ids: t.Optional[t.List[str]] = None,
-                 interactively_started: bool = False) -> None:
+                 interactively_started: bool = False,
+                 label_filter: str = None) -> None:
         """
         A pipeline run started
         Args:
@@ -38,6 +39,7 @@ class RunStarted(PipelineEvent):
             node_ids: list of node.ids which should be run
             is_root_pipeline: whether this pipeline run runs the root pipeline
             interactively_started: whether or not the run was started interactively
+            label_filter: The label filter used for the execution
         """
         super().__init__([])
         self.node_path = node_path
@@ -46,6 +48,7 @@ class RunStarted(PipelineEvent):
         self.interactively_started = interactively_started
         self.is_root_pipeline = is_root_pipeline
         self.node_ids = node_ids or []
+        self.label_filter = label_filter
 
         self.user: str = get_user_display_name(interactively_started)
 
@@ -71,17 +74,19 @@ class RunFinished(PipelineEvent):
 
 
 class NodeStarted(PipelineEvent):
-    def __init__(self, node_path: [str], start_time: datetime.datetime, is_pipeline: bool) -> None:
+    def __init__(self, node_path: [str], start_time: datetime.datetime, is_pipeline: bool, label_filter: str) -> None:
         """
         A task run started.
         Args:
             node_path: The path of the current node in the data pipeline that is run
             start_time: The time when the task started
             is_pipeline: Whether the node is a pipeline
+            label_filter: The label filter used for the execution
         """
         super().__init__(node_path)
         self.start_time = start_time
         self.is_pipeline = is_pipeline
+        self.label_filter = label_filter
 
 
 class NodeFinished(PipelineEvent):
