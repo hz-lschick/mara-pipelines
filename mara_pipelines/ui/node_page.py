@@ -172,7 +172,7 @@ def pipeline_children_table(path: str):
     pipeline, __ = pipelines.find_node(path.split('/'))
     assert (isinstance(pipeline, pipelines.Pipeline))
 
-    node_durations_and_run_times = node_cost.node_durations_and_run_times(pipeline)
+    node_durations_and_run_times = node_cost.node_durations_and_run_times(pipeline, label_filter='')
 
     rows = []
     for node in pipeline.nodes.values():
@@ -186,7 +186,7 @@ def pipeline_children_table(path: str):
                  _.td(style='color:#bbb' if avg_duration == avg_run_time else '')[
                      node_cost.format_duration(avg_run_time)],
                  _.td[node_cost.format_duration(
-                     node_cost.compute_cost(node, node_durations_and_run_times))],
+                     node_cost.compute_cost(node, node_durations_and_run_times, label_filter=''))],
                  _.td[(_.input(class_='pipeline-node-checkbox', type='checkbox',
                                value=node.id, name='ids[]', onchange='runButtons.update()')
                        if config.allow_run_from_web_ui() else '')]])

@@ -22,7 +22,8 @@ from . import events
 
 def run_pipeline(pipeline: pipelines.Pipeline, nodes: {pipelines.Node} = None,
                  with_upstreams: bool = False,
-                 interactively_started: bool = False
+                 interactively_started: bool = False,
+                 label_filter: str = None
                  ) -> [events.Event]:
     """
     Runs a pipeline in a forked sub process. Acts as a generator that yields events from the sub process.
@@ -64,12 +65,12 @@ def run_pipeline(pipeline: pipelines.Pipeline, nodes: {pipelines.Node} = None,
             node_queue: [pipelines.Node] = []
 
             # data needed for computing cost
-            node_durations_and_run_times = node_cost.node_durations_and_run_times(pipeline)
+            node_durations_and_run_times = node_cost.node_durations_and_run_times(pipeline, label_filter)
 
             # Putting nodes into the node queue
             def queue(nodes: [pipelines.Node]):
                 for node in nodes:
-                    node_cost.compute_cost(node, node_durations_and_run_times)
+                    node_cost.compute_cost(node, node_durations_and_run_times, label_filter)
                     node_queue.append(node)
                 node_queue.sort(key=lambda node: node.cost, reverse=True)
 
@@ -175,7 +176,8 @@ def run_pipeline(pipeline: pipelines.Pipeline, nodes: {pipelines.Node} = None,
                                                        pid=os.getpid(),
                                                        interactively_started=interactively_started,
                                                        node_ids=[node.id for node in (nodes or [])],
-                                                       is_root_pipeline=(pipeline.parent is None))
+                                                       is_root_pipeline=(pipeline.parent is None),
+                                                       label_filter=label_filter)
                             )
 
             # collect system stats in a separate Process
@@ -207,7 +209,7 @@ def run_pipeline(pipeline: pipelines.Pipeline, nodes: {pipelines.Node} = None,
                                         next_node.add_dependency(pipeline_node, downstream)
 
                             # get cost information for children
-                            node_durations_and_run_times.update(node_cost.node_durations_and_run_times(next_node))
+                            node_durations_and_run_times.update(node_cost.node_durations_and_run_times(next_node, label_filter))
 
                             # queue all child nodes
                             queue(list(next_node.nodes.values()))
@@ -215,13 +217,17 @@ def run_pipeline(pipeline: pipelines.Pipeline, nodes: {pipelines.Node} = None,
                             # book keeping and event emission
                             pipeline_start_time = datetime.datetime.now(tz.utc)
                             running_pipelines[next_node] = [pipeline_start_time, 0]
-                            event_queue.put(pipeline_events.NodeStarted(next_node.path(), pipeline_start_time, True))
+                            event_queue.put(pipeline_events.NodeStarted(next_node.path(), pipeline_start_time, True, label_filter))
                             event_queue.put(pipeline_events.Output(
                                 node_path=next_node.path(), format=logger.Format.ITALICS,
                                 message='★ ' + node_cost.format_duration(
                                     node_durations_and_run_times.get(tuple(next_node.path()), [0, 0])[0])))
 
                         elif isinstance(next_node, pipelines.ParallelTask):
+                            if not pipelines.labe_filter_applies_to_node(next_node, label_filter):
+                                processed_nodes.add(next_node)
+                                continue
+
                             # create sub tasks and queue them
                             task_start_time = datetime.datetime.now(tz.utc)
                             try:
@@ -233,7 +239,7 @@ def run_pipeline(pipeline: pipelines.Pipeline, nodes: {pipelines.Node} = None,
 
                             except Exception as e:
                                 event_queue.put(pipeline_events.NodeStarted(
-                                    node_path=next_node.path(), start_time=task_start_time, is_pipeline=True))
+                                    node_path=next_node.path(), start_time=task_start_time, is_pipeline=True, label_filter=label_filter))
                                 logger.log(message=f'Could not launch parallel tasks', format=logger.Format.ITALICS,
                                            is_error=True)
                                 logger.log(message=traceback.format_exc(),
@@ -248,11 +254,15 @@ def run_pipeline(pipeline: pipelines.Pipeline, nodes: {pipelines.Node} = None,
                                 logger.redirect_output(event_queue, pipeline.path())
 
                         else:
+                            if not pipelines.labe_filter_applies_to_node(next_node, label_filter):
+                                processed_nodes.add(next_node)
+                                continue
+
                             # run a task in a subprocess
                             if next_node.parent in running_pipelines:
                                 running_pipelines[next_node.parent][1] += 1
                             event_queue.put(
-                                pipeline_events.NodeStarted(next_node.path(), datetime.datetime.now(tz.utc), False))
+                                pipeline_events.NodeStarted(next_node.path(), datetime.datetime.now(tz.utc), False, label_filter))
                             event_queue.put(pipeline_events.Output(
                                 node_path=next_node.path(), format=logger.Format.ITALICS,
                                 message='★ ' + node_cost.format_duration(
