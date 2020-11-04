@@ -10,7 +10,8 @@ from .. import config, pipelines
 def run_pipeline(pipeline: pipelines.Pipeline, nodes: {pipelines.Node} = None,
                  with_upstreams: bool = False,
                  interactively_started: bool = False,
-                 disable_colors: bool = False) -> bool:
+                 disable_colors: bool = False,
+                 label_filter: str = None) -> bool:
     """
     Runs a pipeline or parts of it with output printed to stdout
     Args:
@@ -43,7 +44,7 @@ def run_pipeline(pipeline: pipelines.Pipeline, nodes: {pipelines.Node} = None,
     theme = plain if disable_colors else colorful
 
     succeeded = False
-    for event in execution.run_pipeline(pipeline, nodes, with_upstreams, interactively_started=interactively_started):
+    for event in execution.run_pipeline(pipeline, nodes, with_upstreams, interactively_started=interactively_started, label_filter=label_filter):
         if isinstance(event, pipeline_events.Output):
             print(f'{theme[PATH_COLOR]}{" / ".join(event.node_path)}{":" if event.node_path else ""}{theme[RESET_ALL]} '
                   + theme[event.format] + (theme[ERROR_COLOR] if event.is_error else '')
@@ -64,7 +65,9 @@ def run_pipeline(pipeline: pipelines.Pipeline, nodes: {pipelines.Node} = None,
               help='Also run all upstreams of --nodes within the pipeline.')
 @click.option('--disable-colors', default=False, is_flag=True,
               help='Output logs without coloring them.')
-def run(path, nodes, with_upstreams, disable_colors: bool = False):
+@click.option('--label-filter',
+              help='A label filter string; will be applied to the nodes of the pipeline')
+def run(path, nodes, with_upstreams, disable_colors: bool = False, label_filter=None):
     """Runs a pipeline or a sub-set of its nodes"""
 
     # the pipeline to run
@@ -85,9 +88,10 @@ def run(path, nodes, with_upstreams, disable_colors: bool = False):
             print(f'Node "{id}" not found in pipeline {path}', file=sys.stderr)
             sys.exit(-1)
         else:
-            _nodes.add(node)
+            if pipelines.label_filter_applies_to_node(node, label_filter):
+                _nodes.add(node)
 
-    if not run_pipeline(pipeline, _nodes, with_upstreams, interactively_started=False, disable_colors=disable_colors):
+    if not run_pipeline(pipeline, _nodes, with_upstreams, interactively_started=False, disable_colors=disable_colors, label_filter=label_filter):
         sys.exit(-1)
 
 
