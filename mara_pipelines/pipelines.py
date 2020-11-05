@@ -371,7 +371,7 @@ def labe_filter_applies_to_node(node: Node, label_filter: str) -> bool:
         if prev_logical_or_result == None:
             prev_logical_or_result = prev_logical_and_result
         else:
-            prev_logical_or_result = prev_logical_or_result and prev_logical_and_result
+            prev_logical_or_result = prev_logical_or_result or prev_logical_and_result
 
     return prev_logical_or_result
 
