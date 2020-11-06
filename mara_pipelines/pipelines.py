@@ -306,7 +306,7 @@ def find_node(path: [str]) -> (Node, bool):
     return _find_node(config.root_pipeline(), path)
 
 
-def labe_filter_applies_to_node(node: Node, label_filter: str) -> bool:
+def label_filter_applies_to_node(node: Node, label_filter: str) -> bool:
     """
     Checks if a label filter applies to a node.
 
