@@ -88,7 +88,7 @@ def run(path, nodes, with_upstreams, disable_colors: bool = False, label_filter=
             print(f'Node "{id}" not found in pipeline {path}', file=sys.stderr)
             sys.exit(-1)
         else:
-            if node.filter_applies(label_filter):
+            if pipelines.label_filter_applies_to_node(node, label_filter):
                 _nodes.add(node)
 
     if not run_pipeline(pipeline, _nodes, with_upstreams, interactively_started=False, disable_colors=disable_colors, label_filter=label_filter):

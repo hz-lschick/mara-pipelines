@@ -224,7 +224,7 @@ def run_pipeline(pipeline: pipelines.Pipeline, nodes: {pipelines.Node} = None,
                                     node_durations_and_run_times.get(tuple(next_node.path()), [0, 0])[0])))
 
                         elif isinstance(next_node, pipelines.ParallelTask):
-                            if not pipelines.labe_filter_applies_to_node(next_node, label_filter):
+                            if not pipelines.label_filter_applies_to_node(next_node, label_filter):
                                 processed_nodes.add(next_node)
                                 continue
 
@@ -254,7 +254,7 @@ def run_pipeline(pipeline: pipelines.Pipeline, nodes: {pipelines.Node} = None,
                                 logger.redirect_output(event_queue, pipeline.path())
 
                         else:
-                            if not pipelines.labe_filter_applies_to_node(next_node, label_filter):
+                            if not pipelines.label_filter_applies_to_node(next_node, label_filter):
                                 processed_nodes.add(next_node)
                                 continue
 
