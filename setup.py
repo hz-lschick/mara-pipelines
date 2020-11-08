@@ -21,7 +21,7 @@ setup(
     url = 'https://github.com/mara/mara-pipelines',
 
     install_requires=[
-        'mara-db>=4.2.0',
+        'mara-db>=4.7.1',
         'mara-page>=1.3.0',
         'mara-storage>=0.9.0',
         'deprecation>=2.1.0',
