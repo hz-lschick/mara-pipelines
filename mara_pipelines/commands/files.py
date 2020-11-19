@@ -9,6 +9,7 @@ import enum
 
 import mara_db.dbs
 import mara_db.shell
+from mara_db.shell import Format
 from . import sql
 from mara_page import _, html
 from .. import config, pipelines
@@ -37,7 +38,8 @@ class ReadFile(pipelines.Command):
                  mapper_script_file_name: str = None, make_unique: bool = False,
                  db_alias: str = None, csv_format: bool = False, skip_header: bool = False,
                  delimiter_char: str = None, quote_char: str = None,
-                 null_value_string: str = None, timezone: str = None) -> None:
+                 null_value_string: str = None, timezone: str = None,
+                 format: Format = None) -> None:
         super().__init__()
         self.file_name = file_name
         self.compression = compression
@@ -52,6 +54,7 @@ class ReadFile(pipelines.Command):
         self.quote_char = quote_char
         self.null_value_string = null_value_string
         self.timezone = timezone
+        self.format = format
 
     def db_alias(self):
         return self._db_alias or config.default_db_alias()
@@ -61,7 +64,8 @@ class ReadFile(pipelines.Command):
             self.db_alias(), csv_format=self.csv_format, target_table=self.target_table,
             skip_header=self.skip_header,
             delimiter_char=self.delimiter_char, quote_char=self.quote_char,
-            null_value_string=self.null_value_string, timezone=self.timezone)
+            null_value_string=self.null_value_string, timezone=self.timezone,
+            format=self.format)
         if not isinstance(mara_db.dbs.db(self.db_alias()), mara_db.dbs.BigQueryDB):
             return \
                 f'{uncompressor(self.compression)} "{pathlib.Path(config.data_dir()) / self.file_name}" \\\n' \
@@ -86,6 +90,7 @@ class ReadFile(pipelines.Command):
                 ('make unique', _.tt[self.make_unique]),
                 ('target_table', _.tt[self.target_table]),
                 ('db alias', _.tt[self.db_alias()]),
+                ('format', _.tt[self.format]),
                 ('csv format', _.tt[self.csv_format]),
                 ('skip header', _.tt[self.skip_header]),
                 ('delimiter char',
