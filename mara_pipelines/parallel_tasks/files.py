@@ -11,6 +11,7 @@ from html import escape
 import mara_db.config
 import mara_db.dbs
 import mara_db.postgresql
+from mara_db.format import Format
 from mara_page import _, html
 
 from .. import config, pipelines
@@ -180,7 +181,8 @@ class ParallelReadFile(_ParallelRead):
                  mapper_script_file_name: str = None, make_unique: bool = False, db_alias: str = None,
                  delimiter_char: str = None, quote_char: str = None, null_value_string: str = None,
                  skip_header: bool = None, csv_format: bool = False,
-                 timezone: str = None, max_number_of_parallel_tasks: int = None) -> None:
+                 timezone: str = None, max_number_of_parallel_tasks: int = None,
+                 format_: Format = None) -> None:
         _ParallelRead.__init__(self, id=id, description=description, file_pattern=file_pattern,
                                read_mode=read_mode, target_table=target_table, file_dependencies=file_dependencies,
                                date_regex=date_regex, partition_target_table_by_day_id=partition_target_table_by_day_id,
@@ -194,6 +196,7 @@ class ParallelReadFile(_ParallelRead):
         self.delimiter_char = delimiter_char
         self.quote_char = quote_char
         self.skip_header = skip_header
+        self.format_ = format_
         self.csv_format = csv_format
         self.null_value_string = null_value_string
 
@@ -202,7 +205,7 @@ class ParallelReadFile(_ParallelRead):
                               mapper_script_file_name=self.mapper_script_file_name, make_unique=self.make_unique,
                               db_alias=self.db_alias, delimiter_char=self.delimiter_char, skip_header=self.skip_header,
                               quote_char=self.quote_char, null_value_string=self.null_value_string,
-                              csv_format=self.csv_format, timezone=self.timezone)
+                              csv_format=self.csv_format, timezone=self.timezone, format_=self.format_)
 
     def html_doc_items(self) -> [(str, str)]:
         path = self.parent.base_path() / self.mapper_script_file_name if self.mapper_script_file_name else ''
