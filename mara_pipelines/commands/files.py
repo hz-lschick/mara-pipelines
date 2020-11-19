@@ -10,6 +10,7 @@ import enum
 
 import mara_db.dbs
 import mara_db.shell
+from mara_db.shell import Format
 import mara_storage.storages
 from mara_storage.shell import read_file_command
 from . import sql
@@ -48,7 +49,8 @@ class ReadFile(pipelines.Command):
                  db_alias: str = None, storage_alias: str = None,
                  csv_format: bool = False, skip_header: bool = False,
                  delimiter_char: str = None, quote_char: str = None,
-                 null_value_string: str = None, timezone: str = None) -> None:
+                 null_value_string: str = None, timezone: str = None,
+                 format: Format = None) -> None:
         super().__init__()
         self.file_name = file_name
         self.compression = compression
@@ -64,6 +66,7 @@ class ReadFile(pipelines.Command):
         self.quote_char = quote_char
         self.null_value_string = null_value_string
         self.timezone = timezone
+        self.format = format
 
     def db_alias(self):
         return self._db_alias or config.default_db_alias()
@@ -77,7 +80,8 @@ class ReadFile(pipelines.Command):
             self.db_alias(), csv_format=self.csv_format, target_table=self.target_table,
             skip_header=self.skip_header,
             delimiter_char=self.delimiter_char, quote_char=self.quote_char,
-            null_value_string=self.null_value_string, timezone=self.timezone)
+            null_value_string=self.null_value_string, timezone=self.timezone,
+            format=self.format)
         db = mara_db.dbs.db(self.db_alias())
         if isinstance(db, mara_db.dbs.BigQueryDB) and not db.gcloud_gcs_bucket_name:
             # Bigquery loading does not support streaming data through pipes
@@ -107,6 +111,7 @@ class ReadFile(pipelines.Command):
                 ('target_table', _.tt[self.target_table]),
                 ('db alias', _.tt[self.db_alias()]),
                 ('storage alias', _.tt[self.storage_alias]),
+                ('format', _.tt[self.format]),
                 ('csv format', _.tt[self.csv_format]),
                 ('skip header', _.tt[self.skip_header]),
                 ('delimiter char',
