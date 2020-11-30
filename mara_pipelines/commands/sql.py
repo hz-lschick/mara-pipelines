@@ -8,6 +8,7 @@ from typing import Callable, Union
 
 import mara_db.dbs
 import mara_db.shell
+from mara_db.format import Format
 from mara_page import _, html
 from .. import config, shell, pipelines
 from ..incremental_processing import file_dependencies
@@ -148,12 +149,13 @@ class Copy(_SQLCommand):
     def __init__(self, source_db_alias: str, target_table: str, target_db_alias: str = None,
                  sql_statement: str = None, sql_file_name: Union[Callable, str] = None, replace: {str: str} = None,
                  timezone: str = None, csv_format: bool = None, delimiter_char: str = None,
-                 file_dependencies=None) -> None:
+                 file_dependencies=None, format_: Format = None) -> None:
         _SQLCommand.__init__(self, sql_statement, sql_file_name, replace)
         self.source_db_alias = source_db_alias
         self.target_table = target_table
         self._target_db_alias = target_db_alias
         self.timezone = timezone
+        self.format_ = format_
         self.csv_format = csv_format
         self.delimiter_char = delimiter_char
         self.file_dependencies = file_dependencies or []
@@ -196,7 +198,8 @@ class Copy(_SQLCommand):
     def shell_command(self):
         return _SQLCommand.shell_command(self) \
                + '  | ' + mara_db.shell.copy_command(self.source_db_alias, self.target_db_alias, self.target_table,
-                                                     self.timezone, self.csv_format, self.delimiter_char)
+                                                     self.timezone, self.csv_format, self.delimiter_char,
+                                                     format=self.format_)
 
     def html_doc_items(self) -> [(str, str)]:
         return [('source db', _.tt[self.source_db_alias])] \
@@ -204,6 +207,7 @@ class Copy(_SQLCommand):
                + [('target db', _.tt[self.target_db_alias]),
                   ('target table', _.tt[self.target_table]),
                   ('timezone', _.tt[self.timezone or '']),
+                  ('format', _.tt[self.format_]),
                   ('csv format', _.tt[self.csv_format or '']),
                   ('delimiter char', _.tt[self.delimiter_char or '']),
                   (_.i['shell command'], html.highlight_syntax(self.shell_command(), 'bash'))]
@@ -216,7 +220,8 @@ class CopyIncrementally(_SQLCommand):
                  sql_file_name: Union[str, Callable] = None, sql_statement: Union[str, Callable] = None,
                  target_db_alias: str = None, timezone: str = None, replace: {str: str} = None,
                  use_explicit_upsert: bool = False,
-                 csv_format: bool = None, delimiter_char: str = None) -> None:
+                 csv_format: bool = None, delimiter_char: str = None,
+                 format_: Format = None) -> None:
         """
         Incrementally loads data from one database into another.
 
@@ -251,6 +256,7 @@ class CopyIncrementally(_SQLCommand):
         self.primary_keys = primary_keys
         self.timezone = timezone
         self.use_explicit_upsert = use_explicit_upsert
+        self.format_ = format_
         self.csv_format = csv_format
         self.delimiter_char = delimiter_char
 
@@ -266,7 +272,8 @@ class CopyIncrementally(_SQLCommand):
         max_value_query = f'SELECT max({self.modification_comparison}) AS maxval FROM {self.source_table}'
         logger.log(max_value_query, format=logger.Format.VERBATIM)
         result = shell.run_shell_command(f'echo {shlex.quote(max_value_query)} \\\n  | '
-                                         + mara_db.shell.copy_to_stdout_command(self.source_db_alias))
+                                         + mara_db.shell.copy_to_stdout_command(self.source_db_alias,
+                                                                                format_=self.format_))
 
         if not result:
             return False
@@ -385,7 +392,8 @@ DO UPDATE SET {set_clause}"""
                 + '  | ' + shell.sed_command(replace)
                 + '  | ' + mara_db.shell.copy_command(self.source_db_alias, self.target_db_alias,
                                                       target_table, timezone=self.timezone,
-                                                      csv_format=self.csv_format, delimiter_char=self.delimiter_char))
+                                                      csv_format=self.csv_format, delimiter_char=self.delimiter_char,
+                                                      format_=self.format_))
 
     def html_doc_items(self) -> [(str, str)]:
         return [('source db', _.tt[self.source_db_alias]),
