@@ -199,7 +199,7 @@ class Copy(_SQLCommand):
         return _SQLCommand.shell_command(self) \
                + '  | ' + mara_db.shell.copy_command(self.source_db_alias, self.target_db_alias, self.target_table,
                                                      self.timezone, self.csv_format, self.delimiter_char,
-                                                     format=self.format_)
+                                                     pipe_format=self.format_)
 
     def html_doc_items(self) -> [(str, str)]:
         return [('source db', _.tt[self.source_db_alias])] \
@@ -273,7 +273,7 @@ class CopyIncrementally(_SQLCommand):
         logger.log(max_value_query, format=logger.Format.VERBATIM)
         result = shell.run_shell_command(f'echo {shlex.quote(max_value_query)} \\\n  | '
                                          + mara_db.shell.copy_to_stdout_command(self.source_db_alias,
-                                                                                format_=self.format_))
+                                                                                pipe_format=self.format_))
 
         if not result:
             return False
@@ -394,7 +394,7 @@ DO UPDATE SET {set_clause}"""
                 + '  | ' + mara_db.shell.copy_command(self.source_db_alias, self.target_db_alias,
                                                       target_table, timezone=self.timezone,
                                                       csv_format=self.csv_format, delimiter_char=self.delimiter_char,
-                                                      format_=self.format_))
+                                                      pipe_format=self.format_))
 
     def html_doc_items(self) -> [(str, str)]:
         return [('source db', _.tt[self.source_db_alias]),
