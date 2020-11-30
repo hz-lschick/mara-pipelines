@@ -80,8 +80,8 @@ class ReadFile(pipelines.Command):
             self.db_alias(), csv_format=self.csv_format, target_table=self.target_table,
             skip_header=self.skip_header,
             delimiter_char=self.delimiter_char, quote_char=self.quote_char,
-            null_value_string=self.null_value_string, timezone=self.timezone
-            format_=self.format_)
+            null_value_string=self.null_value_string, timezone=self.timezone,
+            pipe_format=self.format_)
         db = mara_db.dbs.db(self.db_alias())
         if isinstance(db, mara_db.dbs.BigQueryDB) and not db.gcloud_gcs_bucket_name:
             # Bigquery loading does not support streaming data through pipes
